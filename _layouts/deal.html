@@ -1,0 +1,25 @@
+---
+layout: default
+---
+<article class="deal">
+  <h1>{{ page.title }}</h1>
+
+  {% if page.image %}
+  <img src="{{ page.image }}" alt="{{ page.title }}" class="deal-img">
+  {% endif %}
+
+  <p class="price">
+    <strong>{{ page.price_current }}€</strong>
+    {% if page.discount_pct %}
+      <span class="discount">(-{{ page.discount_pct }}%)</span>
+    {% endif %}
+  </p>
+
+  {% if page.amazon_url %}
+    <p><a class="btn" href="{{ page.amazon_url }}" rel="sponsored nofollow" target="_blank">
+      Vai all'offerta
+    </a></p>
+  {% endif %}
+
+  {{ content }}
+</article>

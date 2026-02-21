@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>{{ page.title }} · {{ site.title }}</title>
+  <link rel="stylesheet" href="{{ '/assets/style.css' | relative_url }}">
+</head>
+<body>
+<header class="site-header">
+  <a href="{{ '/' | relative_url }}" class="brand">{{ site.title }}</a>
+  <nav><a href="{{ '/deals/' | relative_url }}">Offerte</a></nav>
+</header>
+
+<main class="container">
+  {{ content }}
+</main>
+
+<footer class="site-footer">
+  <small>© {{ site.time | date: '%Y' }} · {{ site.title }}</small>
+  <p class="disclaimer">
+    Alcuni link presenti sul sito sono link affiliati. Potremmo ricevere una commissione sugli acquisti idonei, senza alcun costo aggiuntivo per te.
+  </p>
+</footer>
+</body>
+</html>
