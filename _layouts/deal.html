@@ -1,0 +1,44 @@
+---
+layout: default
+---
+<article class="deal">
+  <h1>{{ page.title }}</h1>
+
+  <div class="deal-grid">
+    <div>
+      {% if page.image %}
+        <img class="deal-img" src="{{ page.image }}" alt="{{ page.title }}">
+      {% endif %}
+    </div>
+
+    <div>
+      {% if page.price_current %}
+        <p class="deal-price"><strong>{{ page.price_current }}€</strong>
+          {% if page.discount_pct %}
+            <span class="deal-discount">(-{{ page.discount_pct }}%)</span>
+          {% endif %}
+        </p>
+      {% endif %}
+
+      {% if page.amazon_url %}
+        <p>
+          <a class="btn" href="{{ page.amazon_url }}" rel="sponsored nofollow" target="_blank">
+            Vai all’offerta su Amazon
+          </a>
+        </p>
+      {% endif %}
+
+      <p class="deal-meta">
+        {% if page.asin %}ASIN: <code>{{ page.asin }}</code><br/>{% endif %}
+        Pubblicato: {{ page.date | date: "%d/%m/%Y %H:%M" }}
+      </p>
+    </div>
+  </div>
+
+  {% if content and content != "" %}
+    <hr/>
+    <div class="deal-notes">
+      {{ content }}
+    </div>
+  {% endif %}
+</article>
