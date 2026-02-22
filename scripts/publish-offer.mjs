@@ -19,18 +19,15 @@ function safeSlug(s) {
 }
 
 function nowRomeISO() {
-  // Non usiamo librerie: per Jekyll basta una stringa coerente
   const d = new Date();
-  // formato: YYYY-MM-DD HH:MM:SS +0100/+0200 (qui mettiamo +0100 “fisso” per semplicità)
   const pad = (n) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())} +0100`;
+  // Nota: +0100 fisso (ok per Jekyll; se vuoi gestiamo DST dopo)
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())} +0100`;
 }
 
 function pickMeta($, property, name) {
-  // <meta property="og:title" content="...">
   const byProp = $(`meta[property="${property}"]`).attr("content");
   if (byProp) return byProp.trim();
-  // <meta name="twitter:title" content="...">
   if (name) {
     const byName = $(`meta[name="${name}"]`).attr("content");
     if (byName) return byName.trim();
@@ -49,11 +46,9 @@ function parseJsonLdOffers($) {
     } catch {}
   });
 
-  const flatten = (x) => Array.isArray(x) ? x.flatMap(flatten) : [x];
-
+  const flatten = (x) => (Array.isArray(x) ? x.flatMap(flatten) : [x]);
   const all = blocks.flatMap(flatten);
 
-  // Cerca oggetti con offers
   for (const obj of all) {
     if (!obj || typeof obj !== "object") continue;
 
@@ -73,11 +68,11 @@ function parseJsonLdOffers($) {
       return { price: String(obj.price), currency: obj.priceCurrency || null };
     }
   }
+
   return null;
 }
 
 function parsePriceFromMeta($) {
-  // meta property="product:price:amount"
   const amount = pickMeta($, "product:price:amount");
   const currency = pickMeta($, "product:price:currency");
   if (amount) return { price: amount, currency: currency || null };
@@ -85,39 +80,60 @@ function parsePriceFromMeta($) {
 }
 
 function normalizePrice(priceStr) {
-  // accetta "1.234,56" o "1234.56"
   const s = String(priceStr).trim();
   const cleaned = s.replace(/[^\d.,]/g, "");
   if (!cleaned) return null;
 
-  // se ha sia . che , assumiamo . migliaia e , decimali
   let normalized = cleaned;
   if (cleaned.includes(".") && cleaned.includes(",")) {
     normalized = cleaned.replace(/\./g, "").replace(",", ".");
   } else if (cleaned.includes(",") && !cleaned.includes(".")) {
     normalized = cleaned.replace(",", ".");
   }
+
   const n = Number(normalized);
   if (!Number.isFinite(n) || n <= 0) return null;
   return n.toFixed(2);
 }
 
-const res = await fetch(url, {
-  redirect: "follow",
-  headers: {
-    "user-agent": "Mozilla/5.0 (offer-bot; +https://github.com/claudiostoduto/amazonsite)"
-  }
-});
+function extractAsin(u) {
+  const m1 = u.match(/\/dp\/([A-Z0-9]{10})/i);
+  if (m1) return m1[1].toUpperCase();
+  const m2 = u.match(/\/gp\/product\/([A-Z0-9]{10})/i);
+  if (m2) return m2[1].toUpperCase();
+  return null;
+}
 
-let html = "";
-if (!res.ok) {
-  console.error("Fetch failed:", res.status, res.statusText);
-  // NON bloccare: pubblica lo stesso
-} else {
-  html = await res.text();
+async function fetchHtml(u) {
+  // Headers più "browser-like"
+  const headers = {
+    "user-agent":
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+    "accept":
+      "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+    "accept-language": "it-IT,it;q=0.9,en;q=0.8",
+    "cache-control": "no-cache",
+    pragma: "no-cache"
+  };
+
+  // 2 tentativi
+  for (let i = 0; i < 2; i++) {
+    const res = await fetch(u, { redirect: "follow", headers });
+    if (res.ok) return { ok: true, html: await res.text() };
+  }
+
+  // Se non ok: non blocchiamo, pubblichiamo comunque
+  return { ok: false, html: "" };
+}
+
+const { ok: fetchOk, html } = await fetchHtml(url);
+if (!fetchOk) {
+  console.error("Fetch failed (will still publish): could not fetch page content");
 }
 
 const $ = cheerio.load(html || "<html></html>");
+
+const fallbackTitle = url.includes("amazon.") ? "Offerta Amazon" : "Offerta";
 
 // Title
 const title =
@@ -125,17 +141,15 @@ const title =
   $("title").first().text().trim() ||
   fallbackTitle;
 
-const fallbackTitle = url.includes("amazon.") ? "Offerta Amazon" : "Offerta";
-
 // Image
-const image =
-  pickMeta($, "og:image", "twitter:image") ||
-  null;
+const image = pickMeta($, "og:image", "twitter:image") || null;
 
 // Price
 let priceInfo = parseJsonLdOffers($) || parsePriceFromMeta($);
 let price = priceInfo?.price ? normalizePrice(priceInfo.price) : null;
-let currency = priceInfo?.currency || "EUR";
+
+// ASIN
+const asin = extractAsin(url);
 
 // File output
 const today = new Date();
@@ -152,12 +166,13 @@ fs.mkdirSync(outDir, { recursive: true });
 
 const frontMatter = [
   "---",
-  'layout: offer',
+  "layout: deal",
   `title: "${title.replace(/"/g, '\\"')}"`,
+  `amazon_url: "${url}"`,
   image ? `image: "${image}"` : null,
-  `source_url: "${url}"`,
-  price ? `price: ${price}` : null,
-  currency ? `currency: "${currency}"` : null,
+  asin ? `asin: ${asin}` : null,
+  price ? `price_current: ${price}` : null,
+  // se ti serve nel template, puoi tenerlo:
   `published_at: "${nowRomeISO()}"`,
   "---",
   "",
@@ -170,4 +185,5 @@ fs.writeFileSync(path.join(outDir, filename), frontMatter, "utf8");
 console.log("Created:", path.join("_posts", filename));
 console.log("Title:", title);
 console.log("Image:", image || "(none)");
-console.log("Price:", price ? `${price} ${currency}` : "(none)");
+console.log("Price:", price ? `${price} EUR` : "(none)");
+console.log("ASIN:", asin || "(none)");
