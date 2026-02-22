@@ -1,0 +1,48 @@
+name: Publish offer from URL
+
+on:
+  repository_dispatch:
+    types: [new_offer]
+  workflow_dispatch:
+    inputs:
+      url:
+        description: "Offer URL"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-offer
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install deps
+        run: |
+          npm init -y
+          npm i cheerio
+
+      - name: Generate post
+        env:
+          INPUT_URL: ${{ github.event.client_payload.url || inputs.url }}
+        run: node scripts/publish-offer.mjs "$INPUT_URL"
+
+      - name: Commit and push
+        run: |
+          git config user.name "offer-bot"
+          git config user.email "offer-bot@users.noreply.github.com"
+          git add _posts/*.md
+          git commit -m "New offer: $(ls -t _posts | head -n 1)" || echo "Nothing to commit"
+          git push
