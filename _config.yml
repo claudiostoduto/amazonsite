@@ -8,3 +8,5 @@ markdown: kramdown
 timezone: Europe/Rome
 future: false
 permalink: /:year/:month/:day/:title/
+
+telegram_url: "https://t.me/vogliosolorisparmiare"   # <-- cambia
