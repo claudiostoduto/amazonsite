@@ -109,19 +109,23 @@ const res = await fetch(url, {
   }
 });
 
+let html = "";
 if (!res.ok) {
   console.error("Fetch failed:", res.status, res.statusText);
-  process.exit(1);
+  // NON bloccare: pubblica lo stesso
+} else {
+  html = await res.text();
 }
 
-const html = await res.text();
-const $ = cheerio.load(html);
+const $ = cheerio.load(html || "<html></html>");
 
 // Title
 const title =
   pickMeta($, "og:title", "twitter:title") ||
   $("title").first().text().trim() ||
-  "Offerta";
+  fallbackTitle;
+
+const fallbackTitle = url.includes("amazon.") ? "Offerta Amazon" : "Offerta";
 
 // Image
 const image =
