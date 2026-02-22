@@ -132,10 +132,12 @@ def main():
     Path("_posts").mkdir(parents=True, exist_ok=True)
     out_path = Path("_posts") / filename
 
+    safe_title = title.replace('"', '\\"')
+    
     fm = [
         "---",
         "layout: deal",
-        f'title: "{title.replace(chr(34), r"\\"")}"',
+        f'title: "{safe_title}"',
         f'asin: "{asin}"',
         f'image: "{image_url}"' if image_url else 'image: ""',
         f'price_current: {euro_amount(price)}' if price else 'price_current: ""',
