@@ -4,16 +4,21 @@ title: "Offerte"
 permalink: /deals/
 ---
 
-{% for post in site.posts %}
-  {% if post.layout == "deal" %}
-    <div class="card">
-      <a href="{{ post.url | relative_url }}">
-        {% if post.image %}
-          <img src="{{ post.image }}" alt="{{ post.title }}">
-        {% endif %}
-        <h3>{{ post.title }}</h3>
-      </a>
-      <p><strong>{{ post.price_current }}€</strong></p>
-    </div>
-  {% endif %}
+<div class="deal-list">
+{% assign deals = site.posts | where: "layout", "deal" %}
+{% for post in deals %}
+  <div class="deal-card">
+    <a href="{{ post.url | relative_url }}">
+      {% if post.image %}
+        <img src="{{ post.image }}" alt="{{ post.title }}">
+      {% endif %}
+      <h3>{{ post.title }}</h3>
+    </a>
+    <p class="deal-price-line">
+      {% if post.price_current %}<strong>{{ post.price_current }}€</strong>{% endif %}
+      {% if post.discount_pct %}<span class="deal-discount">(-{{ post.discount_pct }}%)</span>{% endif %}
+    </p>
+    <small class="deal-date">{{ post.date | date: "%d/%m/%Y %H:%M" }}</small>
+  </div>
 {% endfor %}
+</div>

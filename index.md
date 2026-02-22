@@ -7,4 +7,4 @@ title: "Home"
 
 Offerte vere. Prezzi bassi. Punto.
 
-➡️ [Vai alle Offerte]({{ '/deals/' | relative_url }})
+➡️ **[Vai alle Offerte]({{ '/deals/' | relative_url }})**
