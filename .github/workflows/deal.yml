@@ -26,21 +26,29 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          node-version: 20
+          python-version: "3.11"
 
-      - name: Generate post from ASIN
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install python-amazon-paapi
+
+      - name: Fetch product data (Creators API)
+        id: deal
         env:
           ASIN: ${{ inputs.asin }}
-          NOTE: ${{ inputs.note }}
-          AMAZON_ACCESS_KEY: ${{ secrets.AMAZON_ACCESS_KEY }}
-          AMAZON_SECRET_KEY: ${{ secrets.AMAZON_SECRET_KEY }}
+          CREATORS_CREDENTIAL_ID: ${{ secrets.CREATORS_CREDENTIAL_ID }}
+          CREATORS_CREDENTIAL_SECRET: ${{ secrets.CREATORS_CREDENTIAL_SECRET }}
+          CREATORS_CREDENTIAL_VERSION: ${{ secrets.CREATORS_CREDENTIAL_VERSION }}
           AMAZON_ASSOCIATE_TAG: ${{ secrets.AMAZON_ASSOCIATE_TAG }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
-        run: node scripts/create-deal.mjs
+        run: |
+          python scripts/create-deal.py > deal.env
+          while IFS= read -r line; do
+            echo "$line" >> "$GITHUB_OUTPUT"
+          done < deal.env
 
       - name: Commit new post
         run: |
