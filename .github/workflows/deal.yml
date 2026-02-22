@@ -36,19 +36,18 @@ jobs:
           pip install --upgrade pip
           pip install python-amazon-paapi
 
-      - name: Fetch product data (Creators API)
-        id: deal
+      - name: Create deal post (Creators API)
         env:
           ASIN: ${{ inputs.asin }}
+          NOTE: ${{ inputs.note }}
           CREATORS_CREDENTIAL_ID: ${{ secrets.CREATORS_CREDENTIAL_ID }}
           CREATORS_CREDENTIAL_SECRET: ${{ secrets.CREATORS_CREDENTIAL_SECRET }}
           CREATORS_CREDENTIAL_VERSION: ${{ secrets.CREATORS_CREDENTIAL_VERSION }}
           AMAZON_ASSOCIATE_TAG: ${{ secrets.AMAZON_ASSOCIATE_TAG }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
         run: |
-          python scripts/create-deal.py > deal.env
-          while IFS= read -r line; do
-            echo "$line" >> "$GITHUB_OUTPUT"
-          done < deal.env
+          python scripts/create-deal.py
 
       - name: Commit new post
         run: |
