@@ -3,16 +3,37 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>{{ page.title }} · {{ site.title }}</title>
+    <title>{% if page.title %}{{ page.title }} · {% endif %}{{ site.title }}</title>
     <meta name="description" content="{{ site.description }}">
+
+    <!-- Open Graph -->
+    <meta property="og:site_name" content="{{ site.title }}">
+    <meta property="og:title" content="{% if page.title %}{{ page.title }}{% else %}{{ site.title }}{% endif %}">
+    <meta property="og:description" content="{{ site.description }}">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ page.url | absolute_url }}">
+    {% if page.image %}
+      <meta property="og:image" content="{{ page.image }}">
+    {% endif %}
+
     <link rel="stylesheet" href="{{ '/assets/style.css' | relative_url }}">
   </head>
+
   <body>
     <header class="site-header">
-      <a href="{{ '/' | relative_url }}" class="brand">{{ site.title }}</a>
-      <nav class="nav">
-        <a href="{{ '/deals/' | relative_url }}">Offerte</a>
-      </nav>
+      <div class="header-inner">
+        <a href="{{ '/' | relative_url }}" class="brand">
+          <span class="brand-mark">€</span>
+          <span class="brand-text">{{ site.title }}</span>
+        </a>
+
+        <nav class="nav">
+          <a href="{{ '/deals/' | relative_url }}">Offerte</a>
+          {% if site.telegram_url %}
+            <a class="nav-cta" href="{{ site.telegram_url }}" target="_blank" rel="nofollow">Telegram</a>
+          {% endif %}
+        </nav>
+      </div>
     </header>
 
     <main class="container">
@@ -20,11 +41,13 @@
     </main>
 
     <footer class="site-footer">
-      <small>© {{ site.time | date: '%Y' }} · {{ site.title }}</small>
-      <p class="disclaimer">
-        Alcuni link presenti sul sito sono link affiliati. Potremmo ricevere una commissione sugli acquisti idonei,
-        senza alcun costo aggiuntivo per te.
-      </p>
+      <div class="footer-inner">
+        <small>© {{ site.time | date: '%Y' }} · {{ site.title }}</small>
+        <p class="disclaimer">
+          Alcuni link presenti sul sito sono link affiliati. Potremmo ricevere una commissione sugli acquisti idonei,
+          senza alcun costo aggiuntivo per te.
+        </p>
+      </div>
     </footer>
   </body>
 </html>
