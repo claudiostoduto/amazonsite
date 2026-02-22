@@ -9,6 +9,31 @@ if (!url || !/^https?:\/\//i.test(url)) {
   process.exit(1);
 }
 
+function pad(n) {
+  return String(n).padStart(2, "0");
+}
+
+function nowRome() {
+  const d = new Date();
+  // Formato coerente con i tuoi post: YYYY-MM-DD HH:MM:SS +0100 (fisso)
+  const yyyy = d.getFullYear();
+  const mm = pad(d.getMonth() + 1);
+  const dd = pad(d.getDate());
+  const hh = pad(d.getHours());
+  const mi = pad(d.getMinutes());
+  const ss = pad(d.getSeconds());
+  return {
+    yyyy,
+    mm,
+    dd,
+    hh,
+    mi,
+    ss,
+    hm: `${hh}${mi}`, // es: 1636
+    dateFrontMatter: `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss} +0100`
+  };
+}
+
 function safeSlug(s) {
   return (s || "offerta")
     .toLowerCase()
@@ -16,13 +41,6 @@ function safeSlug(s) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 80) || "offerta";
-}
-
-function nowRomeISO() {
-  const d = new Date();
-  const pad = (n) => String(n).padStart(2, "0");
-  // Nota: +0100 fisso (ok per Jekyll; se vuoi gestiamo DST dopo)
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())} +0100`;
 }
 
 function pickMeta($, property, name) {
@@ -41,8 +59,7 @@ function parseJsonLdOffers($) {
     const txt = $(el).text();
     if (!txt) return;
     try {
-      const parsed = JSON.parse(txt.trim());
-      blocks.push(parsed);
+      blocks.push(JSON.parse(txt.trim()));
     } catch {}
   });
 
@@ -52,34 +69,29 @@ function parseJsonLdOffers($) {
   for (const obj of all) {
     if (!obj || typeof obj !== "object") continue;
 
-    // Product -> offers
     const offers = obj.offers || obj.Offers;
     if (offers) {
       const arr = Array.isArray(offers) ? offers : [offers];
       for (const off of arr) {
         const price = off?.price ?? off?.Price;
-        const currency = off?.priceCurrency ?? off?.pricecurrency;
-        if (price != null) return { price: String(price), currency: currency || null };
+        if (price != null) return String(price);
       }
     }
 
-    // Offer diretto
     if ((obj["@type"] === "Offer" || obj["@type"] === "AggregateOffer") && obj.price != null) {
-      return { price: String(obj.price), currency: obj.priceCurrency || null };
+      return String(obj.price);
     }
   }
-
   return null;
 }
 
 function parsePriceFromMeta($) {
   const amount = pickMeta($, "product:price:amount");
-  const currency = pickMeta($, "product:price:currency");
-  if (amount) return { price: amount, currency: currency || null };
-  return null;
+  return amount ? String(amount) : null;
 }
 
-function normalizePrice(priceStr) {
+function normalizePriceToItalianString(priceStr) {
+  // ritorna "180,90" come nei tuoi post
   const s = String(priceStr).trim();
   const cleaned = s.replace(/[^\d.,]/g, "");
   if (!cleaned) return null;
@@ -93,7 +105,9 @@ function normalizePrice(priceStr) {
 
   const n = Number(normalized);
   if (!Number.isFinite(n) || n <= 0) return null;
-  return n.toFixed(2);
+
+  // due decimali, poi punto->virgola
+  return n.toFixed(2).replace(".", ",");
 }
 
 function extractAsin(u) {
@@ -105,7 +119,6 @@ function extractAsin(u) {
 }
 
 async function fetchHtml(u) {
-  // Headers più "browser-like"
   const headers = {
     "user-agent":
       "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
@@ -122,7 +135,6 @@ async function fetchHtml(u) {
     if (res.ok) return { ok: true, html: await res.text() };
   }
 
-  // Se non ok: non blocchiamo, pubblichiamo comunque
   return { ok: false, html: "" };
 }
 
@@ -134,49 +146,40 @@ if (!fetchOk) {
 const $ = cheerio.load(html || "<html></html>");
 
 const fallbackTitle = url.includes("amazon.") ? "Offerta Amazon" : "Offerta";
-
-// Title
 const title =
   pickMeta($, "og:title", "twitter:title") ||
   $("title").first().text().trim() ||
   fallbackTitle;
 
-// Image
-const image = pickMeta($, "og:image", "twitter:image") || null;
+const image = pickMeta($, "og:image", "twitter:image") || "";
 
-// Price
-let priceInfo = parseJsonLdOffers($) || parsePriceFromMeta($);
-let price = priceInfo?.price ? normalizePrice(priceInfo.price) : null;
+const rawPrice = parseJsonLdOffers($) || parsePriceFromMeta($);
+const price_current = rawPrice ? normalizePriceToItalianString(rawPrice) : "";
 
-// ASIN
 const asin = extractAsin(url);
 
-// File output
-const today = new Date();
-const yyyy = today.getFullYear();
-const mm = String(today.getMonth() + 1).padStart(2, "0");
-const dd = String(today.getDate()).padStart(2, "0");
-
+const t = nowRome();
 const slugBase = safeSlug(title);
-const hash = crypto.createHash("sha1").update(url).digest("hex").slice(0, 6);
-const filename = `${yyyy}-${mm}-${dd}-${slugBase}-${hash}.md`;
+
+// Come i tuoi post: time + slug + (asin o hash)
+const tail = asin ? asin.toLowerCase() : crypto.createHash("sha1").update(url).digest("hex").slice(0, 10);
+const filename = `${t.yyyy}-${t.mm}-${t.dd}-${t.hm}-${slugBase}-${tail}.md`;
 
 const outDir = path.join(process.cwd(), "_posts");
 fs.mkdirSync(outDir, { recursive: true });
 
 const frontMatter = [
   "---",
-  "layout: deal",
+  `layout: deal`,
   `title: "${title.replace(/"/g, '\\"')}"`,
+  asin ? `asin: "${asin}"` : null,
+  image ? `image: "${image}"` : `image: ""`,
+  `price_current: "${price_current}"`,
+  `price_list: ""`,
+  `discount_pct: ""`,
   `amazon_url: "${url}"`,
-  image ? `image: "${image}"` : null,
-  asin ? `asin: ${asin}` : null,
-  price ? `price_current: ${price}` : null,
-  // se ti serve nel template, puoi tenerlo:
-  `published_at: "${nowRomeISO()}"`,
+  `date: ${t.dateFrontMatter}`,
   "---",
-  "",
-  "Offerta pubblicata automaticamente.",
   ""
 ].filter(Boolean).join("\n");
 
@@ -185,5 +188,5 @@ fs.writeFileSync(path.join(outDir, filename), frontMatter, "utf8");
 console.log("Created:", path.join("_posts", filename));
 console.log("Title:", title);
 console.log("Image:", image || "(none)");
-console.log("Price:", price ? `${price} EUR` : "(none)");
+console.log("Price:", price_current || "(none)");
 console.log("ASIN:", asin || "(none)");
