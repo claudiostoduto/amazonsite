@@ -1,11 +1,23 @@
-name: New Deal (ASIN -> Post -> Pages -> Telegram)
+name: New Deal (Manual -> Post -> Pages -> Telegram)
 
 on:
   workflow_dispatch:
     inputs:
-      asin:
-        description: "ASIN Amazon.it (10 caratteri)"
+      title:
+        description: "Titolo prodotto"
         required: true
+      url:
+        description: "URL Amazon.it del prodotto"
+        required: true
+      image_url:
+        description: "URL immagine (facoltativo)"
+        required: false
+      price:
+        description: "Prezzo attuale (es. 29.99)"
+        required: false
+      discount_pct:
+        description: "Sconto percentuale (es. 50)"
+        required: false
       note:
         description: "Nota (opzionale)"
         required: false
@@ -31,23 +43,19 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install dependencies
-        run: |
-          pip install --upgrade pip
-          pip install python-amazon-paapi
-
-      - name: Create deal post (Creators API)
+      - name: Create deal post (manual)
         env:
-          ASIN: ${{ inputs.asin }}
+          TITLE: ${{ inputs.title }}
+          URL: ${{ inputs.url }}
+          IMAGE_URL: ${{ inputs.image_url }}
+          PRICE: ${{ inputs.price }}
+          DISCOUNT_PCT: ${{ inputs.discount_pct }}
           NOTE: ${{ inputs.note }}
-          CREATORS_CREDENTIAL_ID: ${{ secrets.CREATORS_CREDENTIAL_ID }}
-          CREATORS_CREDENTIAL_SECRET: ${{ secrets.CREATORS_CREDENTIAL_SECRET }}
-          CREATORS_CREDENTIAL_VERSION: ${{ secrets.CREATORS_CREDENTIAL_VERSION }}
           AMAZON_ASSOCIATE_TAG: ${{ secrets.AMAZON_ASSOCIATE_TAG }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
         run: |
-          python scripts/create-deal.py
+          python scripts/create-deal-manual.py
 
       - name: Commit new post
         run: |
